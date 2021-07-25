@@ -19,10 +19,14 @@ const unsigned long SPIN_PERIOD = 3000;
 unsigned long startMillisServo;
 unsigned long currentMillisServo;
 const unsigned long SERVO_PERIOD = 1500;
-String spinDirection = "cw";
+String spinDirection = "a";
 int servoAngle = 125;
-int spinSpeed = 50;
+int spinSpeed = 25;
+int spinSpeed1 = 25;
+int spinSpeed2 = 40;
+int spinSpeed3 = 60;
 int buttonState = 0;
+int buttonPos = 0;
 volatile byte buttonMode = LOW;
 
 int lastButtonState = 0;
@@ -38,8 +42,10 @@ Adafruit_LIS3MDL magnet;
 LSM6 gyroAccel;
 
 String pressButton(void);
-void buttonDirectionChange(String);
-void autoDirectionChange(int);
+int speedChangeButton(void);
+void oneDirectionSpin(int);
+void buttonDirectionChange(String, int);
+void autoDirectionChange(int, int);
 void autoServoChange(int);
 void readMagnetometer(void);
 void readGyroAndAccel(void);
@@ -55,9 +61,10 @@ void setup()
   pinMode(MOTOR_PWM_1, OUTPUT);
   pinMode(MOTOR_PWM_2, OUTPUT);
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), mode, FALLING); // run mode routine whenever pin goes high to low
-  digitalWrite(LASER_PIN, LOW);
+  digitalWrite(LASER_PIN, HIGH);
   digitalWrite(GREEN_LED_PIN, HIGH); // red LED on as long as device is on
   laserServo.attach(SERVO_PIN);
+  laserServo.write(servoAngle);
 
   //-----IMU initialize-----
 
@@ -89,9 +96,11 @@ void setup()
 
 void loop() 
 {
-  spinDirection = pressButton();
-  buttonDirectionChange(spinDirection);
-  autoServoChange(SERVO_PERIOD);
+  //spinDirection = pressButton();
+  spinSpeed = speedChangeButton();
+  oneDirectionSpin(spinSpeed);
+  //buttonDirectionChange(spinDirection, spinSpeed);
+  //autoServoChange(SERVO_PERIOD);
 }
 
 String pressButton(void)
@@ -120,36 +129,73 @@ String pressButton(void)
   return spinDirection;
 }
 
-void buttonDirectionChange(String spinDirection)
+int speedChangeButton(void)
+{
+  static int speed = 25;
+  static bool buttonPressed = 0;
+  buttonState = digitalRead(BUTTON_PIN);
+  if ((millis() - lastDebounceTime) > debounceDelay)
+  {
+    if(buttonState == LOW && buttonPressed == 0)
+    {
+      if(buttonPos == 0)
+        {speed = spinSpeed1;}
+      else if(buttonPos == 1)
+        {speed = spinSpeed2;}
+      else if(buttonPos == 2)
+        {speed = spinSpeed3;}
+      if(buttonPos == 2)
+        {buttonPos = 0;}
+      else
+        {buttonPos++;}
+      buttonPressed = 1;
+      lastDebounceTime = millis();
+    }
+    if(buttonState == HIGH)
+      {
+        buttonPressed = 0;
+        lastDebounceTime = millis();
+      }
+  }
+  return speed;
+}
+
+void oneDirectionSpin(int speed)
+{
+  analogWrite(MOTOR_PWM_1, speed);
+  analogWrite(MOTOR_PWM_2, 0);
+}
+
+void buttonDirectionChange(String spinDirection, int speed)
 {
   if(spinDirection == "a")
   {
-    analogWrite(MOTOR_PWM_1, spinSpeed);
+    analogWrite(MOTOR_PWM_1, speed);
     analogWrite(MOTOR_PWM_2, 0);
   }
   else if(spinDirection == "b")
   {
     analogWrite(MOTOR_PWM_1, 0);
-    analogWrite(MOTOR_PWM_2, spinSpeed);
+    analogWrite(MOTOR_PWM_2, speed);
   }
 }
 
-void autoDirectionChange(int interval)
+void autoDirectionChange(int interval, int speed)
 {
   currentMillisSpin = millis();
     if(currentMillisSpin - startMillisSpin >= interval)
     {
-      if(spinDirection=="cw")
+      if(spinDirection=="a")
       {
         
-        spinDirection = "ccw";
+        spinDirection = "b";
         analogWrite(MOTOR_PWM_1, 0);
-        analogWrite(MOTOR_PWM_2, spinSpeed);
+        analogWrite(MOTOR_PWM_2, speed);
       }
-      else if(spinDirection=="ccw")
+      else if(spinDirection=="b")
       {
-        spinDirection = "cw";
-        analogWrite(MOTOR_PWM_1, spinSpeed);
+        spinDirection = "a";
+        analogWrite(MOTOR_PWM_1, speed);
         analogWrite(MOTOR_PWM_2, 0);
       }
       startMillisSpin = currentMillisSpin;
