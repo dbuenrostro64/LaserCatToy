@@ -50,6 +50,7 @@ void autoServoChange(int);
 void readMagnetometer(void);
 void readGyroAndAccel(void);
 void mode();
+void ledSpeedStatus(int);
 
 void setup() 
 {
@@ -62,7 +63,7 @@ void setup()
   pinMode(MOTOR_PWM_2, OUTPUT);
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), mode, FALLING); // run mode routine whenever pin goes high to low
   digitalWrite(LASER_PIN, HIGH);
-  digitalWrite(GREEN_LED_PIN, HIGH); // red LED on as long as device is on
+  digitalWrite(RED_LED_PIN, HIGH); // red LED on as long as device is on
   laserServo.attach(SERVO_PIN);
   laserServo.write(servoAngle);
 
@@ -99,6 +100,7 @@ void loop()
   //spinDirection = pressButton();
   spinSpeed = speedChangeButton();
   oneDirectionSpin(spinSpeed);
+  ledSpeedStatus(spinSpeed);
   //buttonDirectionChange(spinDirection, spinSpeed);
   //autoServoChange(SERVO_PERIOD);
 }
@@ -138,16 +140,16 @@ int speedChangeButton(void)
   {
     if(buttonState == LOW && buttonPressed == 0)
     {
+      if(buttonPos == 2)
+        {buttonPos = 0;}
+      else
+        {buttonPos++;}
       if(buttonPos == 0)
         {speed = spinSpeed1;}
       else if(buttonPos == 1)
         {speed = spinSpeed2;}
       else if(buttonPos == 2)
         {speed = spinSpeed3;}
-      if(buttonPos == 2)
-        {buttonPos = 0;}
-      else
-        {buttonPos++;}
       buttonPressed = 1;
       lastDebounceTime = millis();
     }
@@ -243,4 +245,30 @@ void readGyroAndAccel(void)
 void mode()
 {
   buttonMode = !buttonMode;
+}
+
+void ledSpeedStatus(int speed)
+{
+  static unsigned long previousMillis = 0;
+  unsigned long currentMillis = millis();
+  const long interval = 500;
+  static int ledState = LOW;
+
+  if (speed == spinSpeed1)
+    {digitalWrite(GREEN_LED_PIN, LOW);}
+  else if (speed == spinSpeed2)
+    {digitalWrite(GREEN_LED_PIN, HIGH);}
+  else if (speed == spinSpeed3)
+    {
+      Serial.println(currentMillis);
+      if (currentMillis - previousMillis >= interval)
+      {
+        previousMillis = currentMillis;
+        if (ledState == LOW)
+        {ledState = HIGH;}
+        else
+        {ledState = LOW;}
+        digitalWrite(GREEN_LED_PIN, ledState);
+      }
+    }
 }
