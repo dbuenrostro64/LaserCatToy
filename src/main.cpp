@@ -20,7 +20,11 @@ unsigned long startMillisServo;
 unsigned long currentMillisServo;
 const unsigned long SERVO_PERIOD = 1500;
 String spinDirection = "a";
+//servo angles
+//0 = servo points up
+//180 = servo points down
 int servoAngle = 125;
+// 25 is minimum spin speed
 int spinSpeed = 25;
 int spinSpeed1 = 25;
 int spinSpeed2 = 40;
@@ -51,6 +55,7 @@ void readMagnetometer(void);
 void readGyroAndAccel(void);
 void mode();
 void ledSpeedStatus(int);
+void drawSquare(void);
 
 void setup() 
 {
@@ -97,13 +102,16 @@ void setup()
 
 void loop() 
 {
+  drawSquare();
   //spinDirection = pressButton();
-  spinSpeed = speedChangeButton();
-  oneDirectionSpin(spinSpeed);
-  ledSpeedStatus(spinSpeed);
+  //spinSpeed = speedChangeButton();
+  //oneDirectionSpin(spinSpeed);
+  //ledSpeedStatus(spinSpeed);
   //buttonDirectionChange(spinDirection, spinSpeed);
   //autoServoChange(SERVO_PERIOD);
 }
+
+//---------------ROBOT CONTROL FUNCTIONS---------------//
 
 String pressButton(void)
 {
@@ -223,25 +231,6 @@ void autoServoChange(int interval)
   }
 }
 
-void readMagnetometer(void)
-{
-  magnet.read();      // get X Y and Z data at once
-  // Then print out the raw data
-  Serial.print("\nX:  "); Serial.print(magnet.x); 
-  Serial.print("  \tY:  "); Serial.print(magnet.y); 
-  Serial.print("  \tZ:  "); Serial.println(magnet.z);
-}
-
-void readGyroAndAccel(void)
-{
-  gyroAccel.read();
-  // print data
-  snprintf(report, sizeof(report), "A: %6d %6d %6d    G: %6d %6d %6d",
-  gyroAccel.a.x, gyroAccel.a.y, gyroAccel.a.z,
-  gyroAccel.g.x, gyroAccel.g.y, gyroAccel.g.z);
-  Serial.println(report);
-}
-
 void mode()
 {
   buttonMode = !buttonMode;
@@ -271,4 +260,53 @@ void ledSpeedStatus(int speed)
         digitalWrite(GREEN_LED_PIN, ledState);
       }
     }
+}
+
+//---------------IMU FUNCTIONS-------------------//
+
+void readMagnetometer(void)
+{
+  magnet.read();      // get X Y and Z data at once
+  // Then print out the raw data
+  Serial.print("\nX:  "); Serial.print(magnet.x); 
+  Serial.print("  \tY:  "); Serial.print(magnet.y); 
+  Serial.print("  \tZ:  "); Serial.println(magnet.z);
+}
+
+void readGyroAndAccel(void)
+{
+  gyroAccel.read();
+  // print data
+  snprintf(report, sizeof(report), "A: %6d %6d %6d    G: %6d %6d %6d",
+  gyroAccel.a.x, gyroAccel.a.y, gyroAccel.a.z,
+  gyroAccel.g.x, gyroAccel.g.y, gyroAccel.g.z);
+  Serial.println(report);
+}
+
+
+//--------------LASER ROUTINES----------------//
+
+//laser pointer draws shape of square on wall
+void drawSquare(void)
+{
+  for(int angle1 = 65; angle1 < 90; angle1+= 1)
+    {
+      laserServo.write(angle1);
+      delay(50);
+    }
+  analogWrite(MOTOR_PWM_1, 0);
+  analogWrite(MOTOR_PWM_2, 25);
+  delay(250);
+  analogWrite(MOTOR_PWM_1, 0);
+  analogWrite(MOTOR_PWM_2, 0);
+  for(int angle2 = 90; angle2 > 65; angle2 -= 1)
+    {
+      laserServo.write(angle2);
+      delay(50);
+    }
+  analogWrite(MOTOR_PWM_1, 25);
+  analogWrite(MOTOR_PWM_2, 0);
+  delay(250);
+  analogWrite(MOTOR_PWM_1, 0);
+  analogWrite(MOTOR_PWM_2, 0);
 }
